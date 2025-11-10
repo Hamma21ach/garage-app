@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  OWNER
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  DONE
+  CANCELLED
+}
+
+enum GarageSpecialty {
+  MECHANIC
+  ELECTRIC
+  BODY_REPAIR
+  ALL_SERVICES
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String
+  email         String        @unique
+  password      String
+  role          Role          @default(USER)
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  appointments  Appointment[]
+  garages       Garage[]      @relation("OwnerGarages")
+  accounts      Account[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+model Garage {
+  id                  String            @id @default(cuid())
+  name                String
+  location            String
+  address             String?
+  city                String?
+  postalCode          String?
+  phone               String?
+  specialties         GarageSpecialty[]
+  description         String?           @db.Text
+  photos              String[]
+  latitude            Float?
+  longitude           Float?
+  
+  owner               User              @relation("OwnerGarages", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId             String
+  
+  isApproved          Boolean           @default(false)
+  subscriptionActive  Boolean           @default(false)
+  subscriptionId      String?           @unique
+  subscriptionPlan    String?
+  subscriptionEndsAt  DateTime?
+  stripeCustomerId    String?           @unique
+  
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  
+  appointments        Appointment[]
+
+  @@index([ownerId])
+  @@index([isApproved, subscriptionActive])
+  @@map("garages")
+}
+
+model Appointment {
+  id                String            @id @default(cuid())
+  
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  garage            Garage            @relation(fields: [garageId], references: [id], onDelete: Cascade)
+  garageId          String
+  
+  carModel          String
+  carYear           String
+  description       String?           @db.Text
+  photos            String[]
+  
+  // Owner response fields
+  costEstimate      Float?
+  durationDays      Int?
+  appointmentDate   DateTime?
+  ownerNotes        String?           @db.Text
+  
+  status            AppointmentStatus @default(PENDING)
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  confirmedAt       DateTime?
+  completedAt       DateTime?
+
+  @@index([userId])
+  @@index([garageId])
+  @@index([status])
+  @@map("appointments")
+}
