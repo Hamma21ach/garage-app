@@ -31,6 +31,11 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
+    // Get the base URL from the request or environment
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                    process.env.NEXTAUTH_URL || 
+                    `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}`;
+
     // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -46,8 +51,8 @@ export async function POST(req: NextRequest) {
         userId: session.user.id,
         plan,
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/owner/dashboard?subscription=success&garageId=${garageId}&plan=${plan}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/owner/subscription?garageId=${garageId}&canceled=true`,
+      success_url: `${baseUrl}/owner/dashboard?subscription=success&garageId=${garageId}&plan=${plan}`,
+      cancel_url: `${baseUrl}/owner/subscription?garageId=${garageId}&canceled=true`,
       customer_email: session.user.email || undefined,
     });
 

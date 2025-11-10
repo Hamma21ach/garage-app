@@ -29,10 +29,15 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Get the base URL from the request or environment
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                    process.env.NEXTAUTH_URL || 
+                    `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}`;
+
     // Create portal session
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: garage.stripeCustomerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/owner/dashboard`,
+      return_url: `${baseUrl}/owner/dashboard`,
     });
 
     return NextResponse.json({ url: portalSession.url });
